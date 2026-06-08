@@ -16,11 +16,12 @@ export async function signUp(prevState: AuthState, formData: FormData): Promise<
         username: formData.get('username') as string,
         display_name: formData.get('username') as string,
       },
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
     },
   })
 
   if (error) return { error: error.message }
-  redirect('/feed')
+  redirect('/check-email')
 }
 
 export async function signIn(prevState: AuthState, formData: FormData): Promise<AuthState> {
