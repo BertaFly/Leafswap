@@ -18,7 +18,7 @@ export default async function ConversationPage({
       id, post_id, participant_1, participant_2,
       p1:profiles!participant_1(id, username, display_name, avatar_url),
       p2:profiles!participant_2(id, username, display_name, avatar_url),
-      posts(id, title, type)
+      posts(id, title, type, author_id)
     `)
     .eq('id', id)
     .single()
@@ -28,11 +28,10 @@ export default async function ConversationPage({
   const p1 = conv.p1 as any
   const p2 = conv.p2 as any
 
-  // Only participants can view the conversation
   if (p1?.id !== user!.id && p2?.id !== user!.id) notFound()
 
   const other = p1?.id === user!.id ? p2 : p1
-  const post = conv.posts as any
+  const post  = conv.posts as any
 
   const participantsMap: Record<string, { username: string; display_name: string | null; avatar_url: string | null }> = {
     [p1.id]: p1,
@@ -45,9 +44,20 @@ export default async function ConversationPage({
     .eq('conversation_id', id)
     .order('created_at', { ascending: true })
 
+  // Fetch any non-cancelled swap for this conversation
+  const { data: existingSwap } = await supabase
+    .from('swaps')
+    .select('id, status')
+    .eq('conversation_id', id)
+    .not('status', 'eq', 'cancelled')
+    .maybeSingle()
+
+  const linkedPost = post
+    ? { id: post.id, title: post.title, authorId: post.author_id }
+    : null
+
   return (
     <div className="max-w-xl mx-auto flex flex-col h-[calc(100vh-8rem)]">
-      {/* Header */}
       <div className="flex items-center gap-3 pb-3 border-b shrink-0">
         <Link href="/messages" className="text-muted-foreground hover:text-foreground text-sm">
           ← Back
@@ -72,6 +82,8 @@ export default async function ConversationPage({
         currentUserId={user!.id}
         initialMessages={initialMessages ?? []}
         participantsMap={participantsMap}
+        linkedPost={linkedPost}
+        existingSwap={existingSwap ?? null}
       />
     </div>
   )

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -21,11 +22,25 @@ interface Participant {
   avatar_url: string | null
 }
 
+const SWAP_STATUS_STYLES: Record<string, string> = {
+  pending:   'bg-amber-50 border-amber-200 text-amber-800',
+  agreed:    'bg-blue-50 border-blue-200 text-blue-800',
+  completed: 'bg-green-50 border-green-200 text-green-800',
+}
+
+const SWAP_STATUS_LABELS: Record<string, string> = {
+  pending:   'Swap proposal pending',
+  agreed:    'Swap agreed',
+  completed: 'Swap completed',
+}
+
 interface ConversationViewProps {
   conversationId: string
   currentUserId: string
   initialMessages: Message[]
   participantsMap: Record<string, Participant>
+  linkedPost?: { id: string; title: string; authorId: string } | null
+  existingSwap?: { id: string; status: string } | null
 }
 
 export function ConversationView({
@@ -33,19 +48,20 @@ export function ConversationView({
   currentUserId,
   initialMessages,
   participantsMap,
+  linkedPost,
+  existingSwap,
 }: ConversationViewProps) {
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [input, setInput] = useState('')
   const [isSending, setIsSending] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const router = useRouter()
   const supabase = createClient()
 
-  // Scroll to bottom whenever messages change
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // Realtime subscription — new messages appear for all participants
   useEffect(() => {
     const channel = supabase
       .channel(`conversation:${conversationId}`)
@@ -84,7 +100,6 @@ export function ConversationView({
     })
 
     setIsSending(false)
-    // Message will appear via the Realtime subscription above
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -94,8 +109,39 @@ export function ConversationView({
     }
   }
 
+  const isPostAuthor = linkedPost?.authorId === currentUserId
+  const canProposeSwap = linkedPost && !isPostAuthor && !existingSwap
+
   return (
     <>
+      {/* Swap banner */}
+      {(existingSwap || canProposeSwap) && (
+        <div className={cn(
+          'mt-3 rounded-xl border px-3 py-2 flex items-center justify-between gap-3 shrink-0 text-sm',
+          existingSwap
+            ? SWAP_STATUS_STYLES[existingSwap.status] ?? 'bg-muted border-border text-foreground'
+            : 'bg-muted border-border text-muted-foreground'
+        )}>
+          {existingSwap ? (
+            <>
+              <span className="font-medium">{SWAP_STATUS_LABELS[existingSwap.status] ?? 'Swap'}</span>
+              <Button size="sm" variant="outline" className="h-7 text-xs"
+                onClick={() => router.push(`/swaps/${existingSwap.id}`)}>
+                View swap
+              </Button>
+            </>
+          ) : (
+            <>
+              <span>Ready to make it official?</span>
+              <Button size="sm" variant="outline" className="h-7 text-xs"
+                onClick={() => router.push(`/swaps/new?post=${linkedPost!.id}&conversation=${conversationId}`)}>
+                Propose swap
+              </Button>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Messages */}
       <div className="flex-1 overflow-y-auto py-4 space-y-3">
         {messages.length === 0 && (
@@ -150,11 +196,7 @@ export function ConversationView({
           disabled={isSending}
           className="flex-1"
         />
-        <Button
-          onClick={handleSend}
-          disabled={!input.trim() || isSending}
-          size="sm"
-        >
+        <Button onClick={handleSend} disabled={!input.trim() || isSending} size="sm">
           Send
         </Button>
       </div>

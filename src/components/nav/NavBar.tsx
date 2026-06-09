@@ -16,7 +16,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 const NAV_ITEMS = [
   { label: 'Feed',     href: '/feed' },
   { label: 'Plants',   href: '/plants' },
-  { label: 'Posts',    href: '/posts' },
+  { label: 'Activity', href: '/activity' },
   { label: 'Messages', href: '/messages' },
 ]
 
