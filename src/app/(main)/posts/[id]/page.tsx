@@ -2,9 +2,9 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { PostStatusActions } from '@/components/posts/PostStatusActions'
+import { MessageAuthorButton } from '@/components/messages/MessageAuthorButton'
 import { formatDistanceToNow } from '@/lib/date'
 
 const TYPE_LABELS = {
@@ -85,12 +85,8 @@ export default async function PostPage({
           </div>
         </Link>
 
-        {!isOwner && post.status === 'active' && (
-          <Button size="sm" asChild>
-            <Link href={`/messages?post=${post.id}&recipient=${author?.username}`}>
-              Message
-            </Link>
-          </Button>
+        {!isOwner && post.status === 'active' && author?.id && (
+          <MessageAuthorButton postId={post.id} recipientId={author.id} />
         )}
         {isOwner && post.status === 'active' && (
           <PostStatusActions postId={post.id} />
