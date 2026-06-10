@@ -93,11 +93,20 @@ export function ConversationView({
     setInput('')
     setIsSending(true)
 
-    await supabase.from('messages').insert({
-      conversation_id: conversationId,
-      sender_id: currentUserId,
-      content,
-    })
+    const { data: inserted } = await supabase
+      .from('messages')
+      .insert({ conversation_id: conversationId, sender_id: currentUserId, content })
+      .select('id, content, sender_id, created_at')
+      .single()
+
+    if (inserted) {
+      // Add immediately from insert response so the sender doesn't wait for
+      // the WebSocket event, which may not yet be established on first send.
+      // The Realtime dedup check prevents this from appearing twice.
+      setMessages(prev =>
+        prev.some(m => m.id === inserted.id) ? prev : [...prev, inserted]
+      )
+    }
 
     setIsSending(false)
   }
