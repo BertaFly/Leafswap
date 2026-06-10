@@ -16,8 +16,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import Link from 'next/link'
-
-type SwapStatus = 'pending' | 'agreed' | 'completed' | 'cancelled'
+import type { SwapStatus } from '@/types/swap'
 
 interface SwapActionsProps {
   swapId: string

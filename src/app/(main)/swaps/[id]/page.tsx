@@ -1,9 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import { SwapActions } from '@/components/swaps/SwapActions'
+import type { SwapDetail } from '@/types/swap'
 
 const STATUS_STYLES: Record<string, string> = {
   pending:   'bg-amber-100 text-amber-700',
@@ -28,7 +29,7 @@ export default async function SwapPage({
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { data: swap } = await supabase
+  const { data: raw } = await supabase
     .from('swaps')
     .select(`
       id, status, offer_note, created_at, completed_at, conversation_id,
@@ -46,18 +47,14 @@ export default async function SwapPage({
     .eq('id', id)
     .single()
 
-  if (!swap) notFound()
+  if (!raw) notFound()
 
-  const initiator = (swap as any).initiator
-  const receiver  = (swap as any).receiver
-  const post      = (swap as any).posts
+  const swap = raw as unknown as SwapDetail
 
-  if (initiator?.id !== user!.id && receiver?.id !== user!.id) notFound()
+  if (swap.initiator.id !== user!.id && swap.receiver.id !== user!.id) notFound()
 
-  const isInitiator = initiator?.id === user!.id
-  const requestedPlants = ((swap as any).swap_requested_plants ?? []).map(
-    (srp: any) => srp.post_plants
-  )
+  const isInitiator    = swap.initiator.id === user!.id
+  const requestedPlants = swap.swap_requested_plants.map(srp => srp.post_plants)
 
   const { data: userRating } = await supabase
     .from('ratings')
@@ -74,11 +71,11 @@ export default async function SwapPage({
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-xl font-bold">Swap proposal</h1>
-          {post && (
+          {swap.posts && (
             <p className="text-sm text-muted-foreground mt-0.5">
               Re:{' '}
-              <Link href={`/posts/${post.id}`} className="hover:underline">
-                {post.title}
+              <Link href={`/posts/${swap.posts.id}`} className="hover:underline">
+                {swap.posts.title}
               </Link>
             </p>
           )}
@@ -90,17 +87,16 @@ export default async function SwapPage({
 
       <Separator />
 
-      {/* Parties */}
       <div className="grid grid-cols-2 gap-4">
-        {[
-          { label: 'Proposing', profile: initiator },
-          { label: 'Receiving', profile: receiver },
-        ].map(({ label, profile }) => {
-          const displayName = profile?.display_name || profile?.username || '?'
+        {([
+          { label: 'Proposing', profile: swap.initiator },
+          { label: 'Receiving', profile: swap.receiver },
+        ] as const).map(({ label, profile }) => {
+          const displayName = profile.display_name || profile.username
           return (
             <div key={label} className="space-y-1">
               <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{label}</p>
-              <Link href={`/profile/${profile?.username}`} className="flex items-center gap-2 hover:opacity-80">
+              <Link href={`/profile/${profile.username}`} className="flex items-center gap-2 hover:opacity-80">
                 <Avatar className="h-7 w-7">
                   <AvatarFallback className="text-xs">
                     {displayName.slice(0, 2).toUpperCase()}
@@ -115,16 +111,16 @@ export default async function SwapPage({
 
       <Separator />
 
-      {/* Requested plants */}
       {requestedPlants.length > 0 && (
         <div className="space-y-3">
           <p className="text-sm font-semibold">
             {isInitiator ? 'You requested' : 'They want'}
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {requestedPlants.map((pp: any) => {
-              const plant = pp?.plants
-              const label = plant?.nickname ?? plant?.species ?? pp?.species_name ?? '?'
+            {requestedPlants.map(pp => {
+              if (!pp) return null
+              const plant = pp.plants
+              const label = plant?.nickname ?? plant?.species ?? pp.species_name ?? '?'
               return (
                 <div key={pp.id} className="rounded-xl border overflow-hidden">
                   <div className="aspect-video bg-muted">
@@ -144,7 +140,6 @@ export default async function SwapPage({
         </div>
       )}
 
-      {/* Offer note */}
       {swap.offer_note && (
         <div className="space-y-1.5">
           <p className="text-sm font-semibold">
@@ -158,10 +153,9 @@ export default async function SwapPage({
 
       <Separator />
 
-      {/* Actions */}
       <SwapActions
         swapId={id}
-        status={swap.status as any}
+        status={swap.status}
         isInitiator={isInitiator}
         conversationId={swap.conversation_id}
         canRate={canRate}

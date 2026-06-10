@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound, redirect } from 'next/navigation'
 import { SwapProposalForm } from '@/components/swaps/SwapProposalForm'
+import type { PostWithPlants } from '@/types/post'
 
 export default async function NewSwapPage({
   searchParams,
@@ -14,8 +15,7 @@ export default async function NewSwapPage({
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Fetch post with offered plants
-  const { data: post } = await supabase
+  const { data: raw } = await supabase
     .from('posts')
     .select(`
       id, title, status, author_id,
@@ -27,20 +27,21 @@ export default async function NewSwapPage({
     .eq('id', postId)
     .single()
 
-  if (!post) notFound()
-  if ((post as any).author_id === user!.id) redirect(`/posts/${postId}`)
-  if ((post as any).status !== 'active') redirect(`/posts/${postId}`)
+  if (!raw) notFound()
 
-  const offeredPlants = ((post as any).post_plants as any[]).filter(
-    (pp: any) => pp.role === 'offered'
-  )
+  const post = raw as unknown as PostWithPlants
+
+  if (post.author_id === user!.id) redirect(`/posts/${postId}`)
+  if (post.status !== 'active') redirect(`/posts/${postId}`)
+
+  const offeredPlants = post.post_plants.filter(pp => pp.role === 'offered')
 
   return (
     <div className="max-w-xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Propose a swap</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Re: <span className="font-medium">{(post as any).title}</span>
+          Re: <span className="font-medium">{post.title}</span>
         </p>
       </div>
       <SwapProposalForm

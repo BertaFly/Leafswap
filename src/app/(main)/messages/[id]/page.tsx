@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ConversationView } from '@/components/messages/ConversationView'
+import type { Conversation } from '@/types/conversation'
 
 export default async function ConversationPage({
   params,
@@ -12,7 +13,7 @@ export default async function ConversationPage({
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { data: conv } = await supabase
+  const { data: raw } = await supabase
     .from('conversations')
     .select(`
       id, post_id, participant_1, participant_2,
@@ -23,19 +24,17 @@ export default async function ConversationPage({
     .eq('id', id)
     .single()
 
-  if (!conv) notFound()
+  if (!raw) notFound()
 
-  const p1 = conv.p1 as any
-  const p2 = conv.p2 as any
+  const conv = raw as unknown as Conversation
 
-  if (p1?.id !== user!.id && p2?.id !== user!.id) notFound()
+  if (conv.p1.id !== user!.id && conv.p2.id !== user!.id) notFound()
 
-  const other = p1?.id === user!.id ? p2 : p1
-  const post  = conv.posts as any
+  const other = conv.p1.id === user!.id ? conv.p2 : conv.p1
 
   const participantsMap: Record<string, { username: string; display_name: string | null; avatar_url: string | null }> = {
-    [p1.id]: p1,
-    [p2.id]: p2,
+    [conv.p1.id]: conv.p1,
+    [conv.p2.id]: conv.p2,
   }
 
   const { data: initialMessages } = await supabase
@@ -44,7 +43,6 @@ export default async function ConversationPage({
     .eq('conversation_id', id)
     .order('created_at', { ascending: true })
 
-  // Fetch any non-cancelled swap for this conversation
   const { data: existingSwap } = await supabase
     .from('swaps')
     .select('id, status')
@@ -52,8 +50,8 @@ export default async function ConversationPage({
     .not('status', 'eq', 'cancelled')
     .maybeSingle()
 
-  const linkedPost = post
-    ? { id: post.id, title: post.title, authorId: post.author_id }
+  const linkedPost = conv.posts
+    ? { id: conv.posts.id, title: conv.posts.title, authorId: conv.posts.author_id ?? '' }
     : null
 
   return (
@@ -64,13 +62,13 @@ export default async function ConversationPage({
         </Link>
         <div className="min-w-0">
           <p className="font-semibold text-sm truncate">
-            {other?.display_name || other?.username}
+            {other.display_name || other.username}
           </p>
-          {post?.title && (
+          {conv.posts?.title && (
             <p className="text-xs text-muted-foreground truncate">
               Re:{' '}
-              <Link href={`/posts/${post.id}`} className="hover:underline">
-                {post.title}
+              <Link href={`/posts/${conv.posts.id}`} className="hover:underline">
+                {conv.posts.title}
               </Link>
             </p>
           )}

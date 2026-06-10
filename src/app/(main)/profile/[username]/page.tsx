@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { ProfileHeader } from '@/components/profile/ProfileHeader'
 import { ProfilePlantGrid } from '@/components/profile/ProfilePlantGrid'
 import { ProfileRatings } from '@/components/profile/ProfileRatings'
+import type { ProfileRatingItem } from '@/types/rating'
 
 export default async function ProfilePage({
   params,
@@ -51,7 +52,7 @@ export default async function ProfilePage({
     <div className="space-y-8">
       <ProfileHeader profile={profile} isOwnProfile={isOwnProfile} />
       <ProfilePlantGrid plants={plants ?? []} isOwnProfile={isOwnProfile} />
-      <ProfileRatings ratings={(ratings ?? []) as any} />
+      <ProfileRatings ratings={(ratings ?? []) as unknown as ProfileRatingItem[]} />
     </div>
   )
 }

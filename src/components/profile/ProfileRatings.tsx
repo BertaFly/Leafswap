@@ -2,18 +2,7 @@ import Link from 'next/link'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import { formatDistanceToNow } from '@/lib/date'
-
-interface Rating {
-  id: string
-  score: number
-  comment: string | null
-  created_at: string
-  profiles: {
-    username: string
-    display_name: string | null
-    avatar_url: string | null
-  } | null
-}
+import type { ProfileRatingItem as Rating } from '@/types/rating'
 
 function Stars({ score }: { score: number }) {
   return (
