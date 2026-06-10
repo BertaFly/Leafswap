@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { ProfileHeader } from '@/components/profile/ProfileHeader'
 import { ProfilePlantGrid } from '@/components/profile/ProfilePlantGrid'
+import { ProfileRatings } from '@/components/profile/ProfileRatings'
 
 export default async function ProfilePage({
   params,
@@ -33,12 +34,24 @@ export default async function ProfilePage({
     plantsQuery = plantsQuery.eq('is_public', true)
   }
 
-  const { data: plants } = await plantsQuery
+  const [{ data: plants }, { data: ratings }] = await Promise.all([
+    plantsQuery,
+    supabase
+      .from('ratings')
+      .select(`
+        id, score, comment, created_at,
+        profiles!source_user_id(username, display_name, avatar_url)
+      `)
+      .eq('target_user_id', profile.id)
+      .order('created_at', { ascending: false })
+      .limit(20),
+  ])
 
   return (
     <div className="space-y-8">
       <ProfileHeader profile={profile} isOwnProfile={isOwnProfile} />
       <ProfilePlantGrid plants={plants ?? []} isOwnProfile={isOwnProfile} />
+      <ProfileRatings ratings={(ratings ?? []) as any} />
     </div>
   )
 }
