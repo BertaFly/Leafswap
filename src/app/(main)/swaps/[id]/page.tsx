@@ -3,22 +3,8 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
-import { SwapActions } from '@/components/swaps/SwapActions'
+import { SwapStatusWatcher } from '@/components/swaps/SwapStatusWatcher'
 import type { SwapDetail } from '@/types/swap'
-
-const STATUS_STYLES: Record<string, string> = {
-  pending:   'bg-amber-100 text-amber-700',
-  agreed:    'bg-blue-100 text-blue-700',
-  completed: 'bg-green-100 text-green-700',
-  cancelled: 'bg-muted text-muted-foreground',
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  pending:   'Pending',
-  agreed:    'Agreed',
-  completed: 'Completed',
-  cancelled: 'Cancelled',
-}
 
 export default async function SwapPage({
   params,
@@ -53,7 +39,7 @@ export default async function SwapPage({
 
   if (swap.initiator.id !== user!.id && swap.receiver.id !== user!.id) notFound()
 
-  const isInitiator    = swap.initiator.id === user!.id
+  const isInitiator     = swap.initiator.id === user!.id
   const requestedPlants = swap.swap_requested_plants.map(srp => srp.post_plants)
 
   const { data: userRating } = await supabase
@@ -63,11 +49,10 @@ export default async function SwapPage({
     .eq('source_user_id', user!.id)
     .maybeSingle()
 
-  const canRate = swap.status === 'completed' && !userRating
-
   return (
     <div className="max-w-xl mx-auto space-y-6">
 
+      {/* Header — status badge is inside SwapStatusWatcher so it updates live */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-xl font-bold">Swap proposal</h1>
@@ -80,13 +65,18 @@ export default async function SwapPage({
             </p>
           )}
         </div>
-        <span className={`text-sm px-3 py-1 rounded-full font-medium ${STATUS_STYLES[swap.status]}`}>
-          {STATUS_LABELS[swap.status]}
-        </span>
+        <SwapStatusWatcher
+          swapId={id}
+          initialStatus={swap.status}
+          isInitiator={isInitiator}
+          conversationId={swap.conversation_id}
+          hasAlreadyRated={!!userRating}
+        />
       </div>
 
       <Separator />
 
+      {/* Participants — static, never changes */}
       <div className="grid grid-cols-2 gap-4">
         {([
           { label: 'Proposing', profile: swap.initiator },
@@ -111,6 +101,7 @@ export default async function SwapPage({
 
       <Separator />
 
+      {/* Requested plants — static */}
       {requestedPlants.length > 0 && (
         <div className="space-y-3">
           <p className="text-sm font-semibold">
@@ -140,6 +131,7 @@ export default async function SwapPage({
         </div>
       )}
 
+      {/* Offer note — static */}
       {swap.offer_note && (
         <div className="space-y-1.5">
           <p className="text-sm font-semibold">
@@ -150,16 +142,6 @@ export default async function SwapPage({
           </div>
         </div>
       )}
-
-      <Separator />
-
-      <SwapActions
-        swapId={id}
-        status={swap.status}
-        isInitiator={isInitiator}
-        conversationId={swap.conversation_id}
-        canRate={canRate}
-      />
     </div>
   )
 }
