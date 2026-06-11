@@ -20,6 +20,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
         username={profile?.username ?? ''}
         displayName={profile?.display_name ?? ''}
         avatarUrl={profile?.avatar_url ?? null}
+        userId={user.id}
       />
       <main className="flex-1 container max-w-5xl mx-auto px-4 py-6 pb-20 sm:pb-6">
         {children}

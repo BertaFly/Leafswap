@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -56,11 +56,23 @@ export function ConversationView({
   const [isSending, setIsSending] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Mark all unread messages as read whenever messages.length changes —
+  // covers both initial open and new messages arriving while viewing.
+  useEffect(() => {
+    supabase
+      .from('messages')
+      .update({ is_read: true })
+      .eq('conversation_id', conversationId)
+      .eq('is_read', false)
+      .neq('sender_id', currentUserId)
+      .then(() => {})
+  }, [supabase, conversationId, currentUserId, messages.length])
 
   useEffect(() => {
     const channel = supabase
@@ -84,7 +96,7 @@ export function ConversationView({
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [conversationId])
+  }, [supabase, conversationId])
 
   async function handleSend() {
     const content = input.trim()
