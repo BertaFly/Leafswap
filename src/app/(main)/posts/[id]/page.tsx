@@ -54,6 +54,10 @@ export default async function PostPage({
   return (
     <div className="max-w-2xl mx-auto space-y-6">
 
+      <Link href="/activity?tab=posts" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+        ← All posts
+      </Link>
+
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <span className={`text-sm px-3 py-1 rounded-full font-medium ${TYPE_STYLES[post.type]}`}>
