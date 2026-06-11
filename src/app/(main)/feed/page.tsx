@@ -13,11 +13,12 @@ export default async function FeedPage({
 }) {
   const { type } = await searchParams
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
 
   let query = supabase
     .from('posts')
     .select(`
-      id, type, status, title, description, created_at,
+      id, type, status, title, description, created_at, author_id,
       profiles!author_id (id, username, display_name, avatar_url),
       post_plants (
         id, role, species_name,
@@ -55,7 +56,7 @@ export default async function FeedPage({
         <div className="columns-1 sm:columns-2 gap-4">
           {posts.map(post => (
             <div key={post.id} className="mb-4 break-inside-avoid">
-              <PostCard post={post as unknown as FeedPost} />
+              <PostCard post={post as unknown as FeedPost} isOwn={post.author_id === user!.id} />
             </div>
           ))}
         </div>

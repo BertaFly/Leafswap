@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { formatDistanceToNow } from '@/lib/date'
+import { cn } from '@/lib/utils'
 import type { FeedPost, PostPlantItem } from '@/types/post'
 
 const TYPE_LABELS: Record<FeedPost['type'], string> = {
@@ -15,7 +16,7 @@ const TYPE_STYLES: Record<FeedPost['type'], string> = {
   giveaway:      'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
 }
 
-export function PostCard({ post }: { post: FeedPost }) {
+export function PostCard({ post, isOwn = false }: { post: FeedPost; isOwn?: boolean }) {
   const offered = post.post_plants.filter(p => p.role === 'offered')
   const sought  = post.post_plants.filter(p => p.role === 'sought')
   const author  = post.profiles
@@ -24,7 +25,12 @@ export function PostCard({ post }: { post: FeedPost }) {
 
   return (
     <Link href={`/posts/${post.id}`}>
-      <div className="rounded-xl border bg-card p-4 space-y-3 hover:bg-muted/30 transition-colors">
+      <div className={cn(
+        'rounded-xl border p-4 space-y-3 transition-colors',
+        isOwn
+          ? 'bg-card hover:bg-muted/30'
+          : 'border-primary/40 bg-primary/[0.03] hover:bg-primary/[0.06]'
+      )}>
 
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
@@ -33,6 +39,11 @@ export function PostCard({ post }: { post: FeedPost }) {
               <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
             </Avatar>
             <span className="text-sm text-muted-foreground truncate">@{author?.username}</span>
+            {isOwn && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium shrink-0">
+                You
+              </span>
+            )}
           </div>
           <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${TYPE_STYLES[post.type]}`}>
             {TYPE_LABELS[post.type]}
